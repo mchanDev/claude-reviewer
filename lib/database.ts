@@ -319,11 +319,11 @@ export function getPRById(id: number): PullRequest | null {
 export function listPRs(options: {
   repoPath?: string;
   status?: string;
-  excludeStatus?: string;
+  excludeStatuses?: string[];
   limit?: number;
 } = {}): PullRequest[] {
   const db = getDatabase();
-  const { repoPath, status, excludeStatus, limit = 50 } = options;
+  const { repoPath, status, excludeStatuses, limit = 50 } = options;
 
   let query = 'SELECT * FROM pull_requests WHERE 1=1';
   const params: (string | number)[] = [];
@@ -338,9 +338,9 @@ export function listPRs(options: {
     params.push(status);
   }
 
-  if (excludeStatus) {
-    query += ' AND status != ?';
-    params.push(excludeStatus);
+  if (excludeStatuses && excludeStatuses.length > 0) {
+    query += ` AND status NOT IN (${excludeStatuses.map(() => '?').join(', ')})`;
+    params.push(...excludeStatuses);
   }
 
   query += ' ORDER BY updated_at DESC LIMIT ?';

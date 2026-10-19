@@ -8,11 +8,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const repoPath = searchParams.get('repo') || undefined;
     const status = searchParams.get('status') || undefined;
-    const excludeStatus = searchParams.get('exclude_status') || undefined;
+    const excludeStatuses = searchParams.get('exclude_status')?.split(',').filter(Boolean);
     const limitStr = searchParams.get('limit');
     const limit = limitStr ? parseInt(limitStr, 10) : 50;
 
-    const prs = listPRs({ repoPath, status, excludeStatus, limit });
+    const prs = listPRs({ repoPath, status, excludeStatuses, limit });
 
     return NextResponse.json({ prs });
   } catch (error: unknown) {

@@ -29,7 +29,7 @@ const statusConfig = {
 export default function Home() {
   const [prs, setPrs] = useState<PullRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('not_closed');
+  const [statusFilter, setStatusFilter] = useState<string>('open');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [closing, setClosing] = useState(false);
 
@@ -41,8 +41,8 @@ export default function Home() {
     setLoading(true);
     try {
       let url = '/api/prs?limit=50';
-      if (statusFilter === 'not_closed') {
-        url += '&exclude_status=closed';
+      if (statusFilter === 'open') {
+        url += '&exclude_status=closed,merged';
       } else if (statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
       }
@@ -127,7 +127,7 @@ export default function Home() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="not_closed">All except closed</option>
+            <option value="open">Open</option>
             <option value="all">All</option>
             <option value="pending">Pending</option>
             <option value="changes_requested">Changes Requested</option>

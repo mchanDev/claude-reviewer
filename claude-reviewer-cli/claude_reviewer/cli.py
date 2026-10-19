@@ -71,12 +71,12 @@ def create(
         if not base:
             # Try to find the default branch
             possible_defaults = ["main", "master", "trunk", "development"]
-            
+
             # 1. Try to get semantic default from remote
             remote_info = subprocess.run(
-                ["git", "remote", "show", "origin"], 
-                cwd=repo_path, 
-                capture_output=True, 
+                ["git", "remote", "show", "origin"],
+                cwd=repo_path,
+                capture_output=True,
                 text=True,
                 check=False  # Don't raise on error, just continue to next method
             ).stdout
@@ -94,11 +94,11 @@ def create(
                     if name in local_branches:
                         base = name
                         break
-            
+
             # 3. Fallback
             if not base:
                 base = "main"
-                
+
             console.print(f"[dim]Auto-detected base branch: {base}[/dim]")
 
         if head_ref == base:
@@ -268,7 +268,7 @@ def list_prs(repo: str | None, status: str | None, limit: int, show_all: bool) -
     Use --all to show PRs from all repositories.
     """
     status_filter = PRStatus(status) if status else None
-    
+
     # Determine repo path filter
     repo_path = None
     if repo:
@@ -286,7 +286,7 @@ def list_prs(repo: str | None, status: str | None, limit: int, show_all: bool) -
                 text=True,
                 check=False
             ).stdout.strip()
-            
+
             if git_root:
                 repo_path = str(Path(git_root).resolve())
         except FileNotFoundError:
@@ -345,7 +345,7 @@ def close(pr_id: str) -> None:
     if pr.status == PRStatus.MERGED:
         console.print(f"[yellow]Warning: PR '{pr_id}' is already merged[/yellow]")
         return
-        
+
     if pr.status == PRStatus.CLOSED:
         console.print(f"[yellow]PR '{pr_id}' is already closed[/yellow]")
         return

@@ -90,6 +90,7 @@ export default function Home() {
             <option value="changes_requested">Changes Requested</option>
             <option value="approved">Approved</option>
             <option value="merged">Merged</option>
+            <option value="closed">Closed</option>
           </select>
         </div>
       </div>

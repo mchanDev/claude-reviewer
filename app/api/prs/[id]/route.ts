@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPRByUuid, getLatestDiff, updatePRStatus, getCommentsWithReplies } from '@/lib/database';
+import { getPRByUuid, getLatestDiff, updatePRStatus, getCommentsWithReplies, deletePR } from '@/lib/database';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -50,6 +50,22 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const updatedPR = getPRByUuid(id);
     return NextResponse.json({ pr: updatedPR });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// DELETE /api/prs/[id] - Permanently delete a PR and its comments, reviews and diffs
+export async function DELETE(req: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+
+    if (!deletePR(id)) {
+      return NextResponse.json({ error: 'PR not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

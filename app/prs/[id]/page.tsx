@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Highlight, themes } from 'prism-react-renderer';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -28,6 +29,8 @@ import {
   FolderOpen,
   Sparkles,
   Loader2,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 
 // Map file extensions to Prism language identifiers
@@ -199,6 +202,7 @@ function SyntaxLine({ code, language }: { code: string; language: string }) {
 
 export default function PRPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [data, setData] = useState<PRData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -210,6 +214,7 @@ export default function PRPage({ params }: { params: Promise<{ id: string }> }) 
   const [replyContent, setReplyContent] = useState('');
   const [reviewSummary, setReviewSummary] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [managing, setManaging] = useState(false);
   const [requestingAI, setRequestingAI] = useState(false);
   const [previewMode, setPreviewMode] = useState<Set<string>>(new Set());
   // Track expanded context: key is "filePath:hunkIndex:direction", value is array of lines
@@ -605,6 +610,38 @@ export default function PRPage({ params }: { params: Promise<{ id: string }> }) 
     }
   };
 
+  const setPRStatus = async (status: 'closed' | 'pending') => {
+    setManaging(true);
+    try {
+      const res = await fetch(`/api/prs/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error();
+      fetchPR();
+    } catch (e) {
+      alert(`Error ${status === 'closed' ? 'closing' : 'reopening'} PR`);
+    } finally {
+      setManaging(false);
+    }
+  };
+
+  const deletePR = async () => {
+    if (!confirm('Permanently delete this PR, including all comments, reviews and revisions? This cannot be undone.')) {
+      return;
+    }
+    setManaging(true);
+    try {
+      const res = await fetch(`/api/prs/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      router.push('/');
+    } catch (e) {
+      alert('Error deleting PR');
+      setManaging(false);
+    }
+  };
+
   const requestAIReview = async () => {
     setRequestingAI(true);
     try {
@@ -840,7 +877,7 @@ export default function PRPage({ params }: { params: Promise<{ id: string }> }) 
           </div>
 
           {/* Review Panel */}
-          {pr.status !== 'merged' && (
+          {pr.status !== 'merged' && pr.status !== 'closed' && (
             <div className="sidebar-section review-panel">
               <h3>Submit Review</h3>
               <textarea
@@ -875,6 +912,28 @@ export default function PRPage({ params }: { params: Promise<{ id: string }> }) 
               )}
             </div>
           )}
+
+          {/* Manage Panel */}
+          <div className="sidebar-section">
+            <h3>Manage</h3>
+            <div className="manage-actions">
+              {pr.status === 'closed' ? (
+                <button className="btn-close-pr" onClick={() => setPRStatus('pending')} disabled={managing}>
+                  <RotateCcw size={16} />
+                  Reopen
+                </button>
+              ) : pr.status !== 'merged' && (
+                <button className="btn-close-pr" onClick={() => setPRStatus('closed')} disabled={managing}>
+                  <XCircle size={16} />
+                  Close PR
+                </button>
+              )}
+              <button className="btn-delete-pr" onClick={deletePR} disabled={managing}>
+                <Trash2 size={16} />
+                Delete
+              </button>
+            </div>
+          </div>
 
           {unresolvedCount > 0 && (
             <div className="sidebar-section">

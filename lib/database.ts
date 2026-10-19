@@ -354,6 +354,19 @@ export function updatePRStatus(uuid: string, status: PullRequest['status']): boo
   return result.changes > 0;
 }
 
+export function closePRs(uuids: string[]): number {
+  if (uuids.length === 0) return 0;
+  const db = getDatabase();
+  const placeholders = uuids.map(() => '?').join(', ');
+  const result = db.prepare(`
+    UPDATE pull_requests
+    SET status = 'closed', updated_at = CURRENT_TIMESTAMP
+    WHERE uuid IN (${placeholders}) AND status NOT IN ('merged', 'closed')
+  `).run(...uuids);
+  checkpoint();
+  return result.changes;
+}
+
 export function deletePR(uuid: string): boolean {
   const db = getDatabase();
   const result = db.prepare('DELETE FROM pull_requests WHERE uuid = ?').run(uuid);

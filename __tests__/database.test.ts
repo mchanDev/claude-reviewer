@@ -18,6 +18,7 @@ import {
   listPRs,
   updatePRStatus,
   deletePR,
+  closePRs,
   getLatestDiff,
   updatePRDiff,
   addComment,
@@ -111,6 +112,20 @@ describe("Database Module", () => {
 
       const pr = getPRByUuid(testPRUuid);
       expect(pr?.status).toBe("approved");
+    });
+
+    test("closePRs closes open PRs and skips merged ones", () => {
+      const openA = createPR("/repo-bulk", "Open A", "main", "a", "a", "b", "d");
+      const openB = createPR("/repo-bulk", "Open B", "main", "b", "a", "b", "d");
+      const merged = createPR("/repo-bulk", "Merged", "main", "m", "a", "b", "d");
+      updatePRStatus(merged, "merged");
+
+      expect(closePRs([openA, openB, merged, "nonexistent"])).toBe(2);
+      expect(getPRByUuid(openA)?.status).toBe("closed");
+      expect(getPRByUuid(openB)?.status).toBe("closed");
+      expect(getPRByUuid(merged)?.status).toBe("merged");
+      expect(closePRs([openA])).toBe(0);
+      expect(closePRs([])).toBe(0);
     });
 
     test("deletePR removes PR and its related data", () => {

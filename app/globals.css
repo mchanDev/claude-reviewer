@@ -330,6 +330,12 @@ input, select, textarea {
   white-space: nowrap;
 }
 
+.file-comment-count {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
 .file-stats {
   font-family: monospace;
   font-size: 0.75rem;

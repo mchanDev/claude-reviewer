@@ -705,6 +705,10 @@ export default function PRPage({ params }: { params: Promise<{ id: string }> }) 
   const config = statusConfig[pr.status];
   const StatusIcon = config.icon;
   const unresolvedCount = comments.filter((c) => !c.comment.resolved).length;
+  const commentCountByFile = comments.reduce<Record<string, number>>((counts, c) => {
+    counts[c.comment.file_path] = (counts[c.comment.file_path] || 0) + 1;
+    return counts;
+  }, {});
 
   return (
     <main className="container pr-detail">
@@ -859,6 +863,14 @@ export default function PRPage({ params }: { params: Promise<{ id: string }> }) 
                       >
                         <File size={14} />
                         <span className="file-name">{file.path.split('/').pop()}</span>
+                        {commentCountByFile[file.path] > 0 && (
+                          <span
+                            className="file-comment-count"
+                            title={`${commentCountByFile[file.path]} comment${commentCountByFile[file.path] !== 1 ? 's' : ''}`}
+                          >
+                            💬 {commentCountByFile[file.path]}
+                          </span>
+                        )}
                         <span className="file-stats">
                           <span className="additions">+{file.additions}</span>
                           <span className="deletions">-{file.deletions}</span>

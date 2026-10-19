@@ -319,10 +319,11 @@ export function getPRById(id: number): PullRequest | null {
 export function listPRs(options: {
   repoPath?: string;
   status?: string;
+  excludeStatuses?: string[];
   limit?: number;
 } = {}): PullRequest[] {
   const db = getDatabase();
-  const { repoPath, status, limit = 50 } = options;
+  const { repoPath, status, excludeStatuses, limit = 50 } = options;
 
   let query = 'SELECT * FROM pull_requests WHERE 1=1';
   const params: (string | number)[] = [];
@@ -335,6 +336,11 @@ export function listPRs(options: {
   if (status) {
     query += ' AND status = ?';
     params.push(status);
+  }
+
+  if (excludeStatuses && excludeStatuses.length > 0) {
+    query += ` AND status NOT IN (${excludeStatuses.map(() => '?').join(', ')})`;
+    params.push(...excludeStatuses);
   }
 
   query += ' ORDER BY updated_at DESC LIMIT ?';
@@ -352,6 +358,19 @@ export function updatePRStatus(uuid: string, status: PullRequest['status']): boo
   `).run(status, uuid);
   checkpoint();
   return result.changes > 0;
+}
+
+export function closePRs(uuids: string[]): number {
+  if (uuids.length === 0) return 0;
+  const db = getDatabase();
+  const placeholders = uuids.map(() => '?').join(', ');
+  const result = db.prepare(`
+    UPDATE pull_requests
+    SET status = 'closed', updated_at = CURRENT_TIMESTAMP
+    WHERE uuid IN (${placeholders}) AND status NOT IN ('merged', 'closed')
+  `).run(...uuids);
+  checkpoint();
+  return result.changes;
 }
 
 export function deletePR(uuid: string): boolean {

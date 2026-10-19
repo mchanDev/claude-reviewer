@@ -10,6 +10,7 @@ import {
   listPRs,
   updatePRStatus,
   deletePR,
+  closePRs,
   getLatestDiff,
   updatePRDiff,
   addComment,
@@ -100,12 +101,37 @@ describe("Database Module", () => {
       prs.forEach((pr) => expect(pr.status).toBe("pending"));
     });
 
+    test("listPRs excludes statuses", () => {
+      const closed = createPR("/repo-exclude", "Closed", "main", "c", "a", "b", "d");
+      updatePRStatus(closed, "closed");
+      const merged = createPR("/repo-exclude", "Merged", "main", "m", "a", "b", "d");
+      updatePRStatus(merged, "merged");
+      const open = createPR("/repo-exclude", "Open", "main", "o", "a", "b", "d");
+
+      const prs = listPRs({ repoPath: "/repo-exclude", excludeStatuses: ["closed", "merged"] });
+      expect(prs.map((pr) => pr.uuid)).toEqual([open]);
+    });
+
     test("updatePRStatus updates PR status", () => {
       const result = updatePRStatus(testPRUuid, "approved");
       expect(result).toBe(true);
 
       const pr = getPRByUuid(testPRUuid);
       expect(pr?.status).toBe("approved");
+    });
+
+    test("closePRs closes open PRs and skips merged ones", () => {
+      const openA = createPR("/repo-bulk", "Open A", "main", "a", "a", "b", "d");
+      const openB = createPR("/repo-bulk", "Open B", "main", "b", "a", "b", "d");
+      const merged = createPR("/repo-bulk", "Merged", "main", "m", "a", "b", "d");
+      updatePRStatus(merged, "merged");
+
+      expect(closePRs([openA, openB, merged, "nonexistent"])).toBe(2);
+      expect(getPRByUuid(openA)?.status).toBe("closed");
+      expect(getPRByUuid(openB)?.status).toBe("closed");
+      expect(getPRByUuid(merged)?.status).toBe("merged");
+      expect(closePRs([openA])).toBe(0);
+      expect(closePRs([])).toBe(0);
     });
 
     test("deletePR removes PR and its related data", () => {

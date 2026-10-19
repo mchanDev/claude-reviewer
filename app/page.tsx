@@ -29,7 +29,9 @@ const statusConfig = {
 export default function Home() {
   const [prs, setPrs] = useState<PullRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('open');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     fetchPRs();
@@ -39,16 +41,56 @@ export default function Home() {
     setLoading(true);
     try {
       let url = '/api/prs?limit=50';
-      if (statusFilter !== 'all') {
+      if (statusFilter === 'open') {
+        url += '&exclude_status=closed,merged';
+      } else if (statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
       }
       const res = await fetch(url);
       const data = await res.json();
       setPrs(data.prs || []);
+      setSelected(new Set());
     } catch (e) {
       console.error('Error fetching PRs:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const isClosable = (pr: PullRequest) => pr.status !== 'merged' && pr.status !== 'closed';
+  const closablePRs = prs.filter(isClosable);
+  const allSelected = closablePRs.length > 0 && closablePRs.every((pr) => selected.has(pr.uuid));
+
+  const toggleSelected = (uuid: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(uuid)) {
+        next.delete(uuid);
+      } else {
+        next.add(uuid);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelected(allSelected ? new Set() : new Set(closablePRs.map((pr) => pr.uuid)));
+  };
+
+  const closeSelected = async () => {
+    setClosing(true);
+    try {
+      const res = await fetch('/api/prs', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uuids: Array.from(selected), status: 'closed' }),
+      });
+      if (!res.ok) throw new Error();
+      fetchPRs();
+    } catch (e) {
+      alert('Error closing PRs');
+    } finally {
+      setClosing(false);
     }
   };
 
@@ -85,6 +127,7 @@ export default function Home() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
+            <option value="open">Open</option>
             <option value="all">All</option>
             <option value="pending">Pending</option>
             <option value="changes_requested">Changes Requested</option>
@@ -107,38 +150,64 @@ export default function Home() {
         </div>
       ) : (
         <div className="pr-list">
+          {closablePRs.length > 0 && (
+            <div className="bulk-bar">
+              <label className="bulk-select-all">
+                <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+                {selected.size > 0 ? `${selected.size} selected` : 'Select all'}
+              </label>
+              {selected.size > 0 && (
+                <button className="btn-bulk-close" onClick={closeSelected} disabled={closing}>
+                  <XCircle size={14} />
+                  {closing ? 'Closing...' : `Close ${selected.size} PR${selected.size !== 1 ? 's' : ''}`}
+                </button>
+              )}
+            </div>
+          )}
           {prs.map((pr) => {
             const config = statusConfig[pr.status];
             const StatusIcon = config.icon;
 
             return (
-              <Link href={`/prs/${pr.uuid}`} key={pr.uuid} className="pr-card">
-                <div className="pr-card-main">
-                  <div className="pr-icon">
-                    <GitPullRequest size={20} />
-                  </div>
-                  <div className="pr-info">
-                    <h3>{pr.title}</h3>
-                    <div className="pr-meta">
-                      <span className="pr-id">#{pr.uuid}</span>
-                      <span className="pr-branch">
-                        {pr.head_ref} → {pr.base_ref}
-                      </span>
-                      <span className="pr-repo">{getRepoName(pr.repo_path)}</span>
+              <div className="pr-row" key={pr.uuid}>
+                <div className="pr-select">
+                  {isClosable(pr) && (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(pr.uuid)}
+                      onChange={() => toggleSelected(pr.uuid)}
+                      aria-label={`Select ${pr.title}`}
+                    />
+                  )}
+                </div>
+                <Link href={`/prs/${pr.uuid}`} className="pr-card">
+                  <div className="pr-card-main">
+                    <div className="pr-icon">
+                      <GitPullRequest size={20} />
+                    </div>
+                    <div className="pr-info">
+                      <h3>{pr.title}</h3>
+                      <div className="pr-meta">
+                        <span className="pr-id">#{pr.uuid}</span>
+                        <span className="pr-branch">
+                          {pr.head_ref} → {pr.base_ref}
+                        </span>
+                        <span className="pr-repo">{getRepoName(pr.repo_path)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="pr-card-status">
-                  <span
-                    className="status-badge"
-                    style={{ backgroundColor: config.color }}
-                  >
-                    <StatusIcon size={14} />
-                    {config.label}
-                  </span>
-                  <span className="pr-time">{formatDate(pr.updated_at)}</span>
-                </div>
-              </Link>
+                  <div className="pr-card-status">
+                    <span
+                      className="status-badge"
+                      style={{ backgroundColor: config.color }}
+                    >
+                      <StatusIcon size={14} />
+                      {config.label}
+                    </span>
+                    <span className="pr-time">{formatDate(pr.updated_at)}</span>
+                  </div>
+                </Link>
+              </div>
             );
           })}
         </div>
@@ -205,18 +274,80 @@ export default function Home() {
           overflow: hidden;
         }
 
-        :global(.pr-card) {
+        .bulk-bar {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1rem 1.25rem;
+          min-height: 2.75rem;
+          padding: 0.5rem 1.25rem 0.5rem 0.75rem;
+          background: var(--bg-tertiary, #21262d);
+          font-size: 0.875rem;
+          color: #8b949e;
+        }
+
+        .bulk-select-all {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          cursor: pointer;
+        }
+
+        .btn-bulk-close {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          padding: 0.375rem 0.75rem;
+          background: #21262d;
+          border: 1px solid #30363d;
+          border-radius: 6px;
+          color: #e6edf3;
+          font-size: 0.8rem;
+          cursor: pointer;
+        }
+
+        .btn-bulk-close:hover:not(:disabled) {
+          background: #30363d;
+        }
+
+        .btn-bulk-close:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .pr-row {
+          display: flex;
+          align-items: stretch;
           background: var(--bg-secondary, #161b22);
-          text-decoration: none;
-          color: inherit;
           transition: background 0.15s;
         }
 
-        :global(.pr-card:hover) {
+        .pr-select {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 2.5rem;
+          flex-shrink: 0;
+        }
+
+        .bulk-bar input,
+        .pr-select input {
+          width: 1rem;
+          height: 1rem;
+          cursor: pointer;
+        }
+
+        :global(.pr-card) {
+          flex: 1;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem 1.25rem 1rem 0;
+          background: transparent;
+          text-decoration: none;
+          color: inherit;
+        }
+
+        .pr-row:hover {
           background: var(--bg-tertiary, #21262d);
         }
 

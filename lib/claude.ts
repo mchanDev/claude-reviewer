@@ -81,7 +81,7 @@ export async function requestFixes(params: {
         `File: ${c.fileName}, Line: ${c.lineNumber}, Comment: ${c.text}`
     ).join('\n');
 
-    const prompt = `You are an expert AI developer. I have some code changes and feedback. 
+    const prompt = `You are an expert AI developer. I have some code changes and feedback.
 Please provide a unified diff patch that addresses the following comments.
 
 <diff>
@@ -92,7 +92,7 @@ ${diff}
 ${formattedComments}
 </comments>
 
-Output ONLY the unified diff patch. No prose, no explanations. 
+Output ONLY the unified diff patch. No prose, no explanations.
 If no changes are needed, output empty string.
 Do not wrap the output in markdown code blocks if possible, or I will have to strip them.
 Just header and diff content.`;

@@ -663,7 +663,6 @@ export default function PRPage({ params }: { params: Promise<{ id: string }> }) 
     }
   };
 
-
   // Parse diff into file chunks
   const parseFileDiff = (diff: string, filePath: string): string[] => {
     const fileMatch = diff.match(
@@ -951,8 +950,6 @@ export default function PRPage({ params }: { params: Promise<{ id: string }> }) 
             const isExpanded = expandedFiles.has(file.path);
             const fileComments = getFileComments(file.path);
             const diffLines = parseFileDiff(diff, file.path);
-
-
 
             const isPreview = previewMode.has(file.path);
             const isMd = isMarkdownFile(file.path);

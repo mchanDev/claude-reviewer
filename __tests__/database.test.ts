@@ -168,6 +168,7 @@ describe("Database Module", () => {
     test("addComment creates a comment and returns UUID", () => {
       commentUuid = addComment(prUuid, "src/app.py", 42, "Fix this issue");
 
+      expect(commentUuid).toBeDefined();
       expect(commentUuid.length).toBe(8);
     });
 

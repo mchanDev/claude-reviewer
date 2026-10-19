@@ -2,14 +2,6 @@
  * Tests for the database module.
  */
 import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-
-// Set up test database path before importing database module
-const testDbDir = fs.mkdtempSync(path.join(os.tmpdir(), "claude-reviewer-test-"));
-const testDbPath = path.join(testDbDir, "test.db");
-process.env.DATABASE_DIR = testDbDir;
-process.env.DATABASE_PATH = testDbPath;
 
 import {
   createPR,
@@ -28,6 +20,9 @@ import {
   getReviews,
   closeDatabase,
 } from "../lib/database";
+
+// test-config/jest.env.ts points DATABASE_DIR at a temporary directory
+const testDbDir = process.env.DATABASE_DIR as string;
 
 describe("Database Module", () => {
   afterAll(() => {

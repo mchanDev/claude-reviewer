@@ -354,6 +354,13 @@ export function updatePRStatus(uuid: string, status: PullRequest['status']): boo
   return result.changes > 0;
 }
 
+export function deletePR(uuid: string): boolean {
+  const db = getDatabase();
+  const result = db.prepare('DELETE FROM pull_requests WHERE uuid = ?').run(uuid);
+  checkpoint();
+  return result.changes > 0;
+}
+
 export function getLatestDiff(uuid: string): string | null {
   const db = getDatabase();
   const pr = db.prepare('SELECT id FROM pull_requests WHERE uuid = ?').get(uuid) as { id: number } | undefined;

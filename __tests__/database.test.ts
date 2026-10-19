@@ -17,6 +17,7 @@ import {
   getPRById,
   listPRs,
   updatePRStatus,
+  deletePR,
   getLatestDiff,
   updatePRDiff,
   addComment,
@@ -110,6 +111,17 @@ describe("Database Module", () => {
 
       const pr = getPRByUuid(testPRUuid);
       expect(pr?.status).toBe("approved");
+    });
+
+    test("deletePR removes PR and its related data", () => {
+      const uuid = createPR("/repo-del", "PR to delete", "main", "del", "a", "b", "diff content");
+      addComment(uuid, "file.ts", 1, "a comment");
+
+      expect(deletePR(uuid)).toBe(true);
+      expect(getPRByUuid(uuid)).toBeFalsy();
+      expect(getComments(uuid)).toHaveLength(0);
+      expect(getLatestDiff(uuid)).toBeNull();
+      expect(deletePR(uuid)).toBe(false);
     });
 
     test("getLatestDiff returns diff content", () => {

@@ -106,6 +106,15 @@ describe("Database Module", () => {
       prs.forEach((pr) => expect(pr.status).toBe("pending"));
     });
 
+    test("listPRs excludes a status", () => {
+      const closed = createPR("/repo-exclude", "Closed", "main", "c", "a", "b", "d");
+      updatePRStatus(closed, "closed");
+      const open = createPR("/repo-exclude", "Open", "main", "o", "a", "b", "d");
+
+      const prs = listPRs({ repoPath: "/repo-exclude", excludeStatus: "closed" });
+      expect(prs.map((pr) => pr.uuid)).toEqual([open]);
+    });
+
     test("updatePRStatus updates PR status", () => {
       const result = updatePRStatus(testPRUuid, "approved");
       expect(result).toBe(true);
